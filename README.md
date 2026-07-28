@@ -6,7 +6,7 @@
 
 ## 🚀 Inspiration
 
-As someone who started trading in my second year, I personally experienced the steep learning curve and confusion around basic market terminologies and trading strategies. Virtual Stock is built to solve that gap — giving users a risk-free, real-world learning experience in the world of stock markets.
+As someone who started trading in my Third year, I personally experienced the steep learning curve and confusion around basic market terminologies and trading strategies. Virtual Stock is built to solve that gap — giving users a risk-free, real-world learning experience in the world of stock markets.
 
 ---
 
