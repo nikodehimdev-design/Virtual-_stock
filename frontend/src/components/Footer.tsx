@@ -170,7 +170,7 @@ const Footer = () => {
             {/* Company Info */}
             <div>
               <h3 className="text-2xl font-bold text-white mb-4">
-                <span className="text-blue-400">Grow</span>Up Trader
+                <span className="text-blue-400">Virtual</span> Stock
               </h3>
               <p className="mb-4 text-gray-400">
                 Your premier virtual stock trading platform. Learn, practice, and master trading without financial risk.
@@ -277,7 +277,7 @@ const Footer = () => {
           {/* Bottom Footer */}
           <div className="mt-12 pt-6 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
             <div className="text-sm text-gray-500 mb-4 md:mb-0">
-              © {new Date().getFullYear()} GrowUp Trader. All rights reserved.
+              © {new Date().getFullYear()} Virtual Stock. All rights reserved.
             </div>
             <div className="flex space-x-4 text-sm text-gray-500">
               <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>

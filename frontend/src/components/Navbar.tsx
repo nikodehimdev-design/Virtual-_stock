@@ -28,10 +28,10 @@ const Navbar = () => {
             <Link to="/" className="flex items-center text-xl font-bold text-gray-800">
               <img 
                 src={image}
-                alt="GrowUp Logo" 
+                alt="Virtual Stock Logo" 
                 className="h-8 w-8 mr-2"
               />
-              GrowUp
+              <span className="text-blue-600">Virtual</span> Stock
             </Link>
           </div>
           

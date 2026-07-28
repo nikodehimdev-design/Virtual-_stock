@@ -106,7 +106,7 @@ const Home = () => {
           className="text-center py-16"
         >
           <h1 className="text-6xl font-bold text-gray-900 mb-6">
-            <span className="text-blue-600">Grow</span>Up Trader
+            <span className="text-blue-600">Virtual</span> Stock
           </h1>
           <div className="flex justify-center items-center mb-6">
             <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg font-semibold flex items-center">
@@ -115,7 +115,7 @@ const Home = () => {
             </div>
           </div>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Master the market without the risk. Our advanced virtual stock simulator gives you $100,000 in virtual cash to build your perfect portfolio and test your strategies in real market conditions.
+            Master the market without the risk. Our advanced virtual stock simulator gives you ₹10,00,000 in virtual cash to build your perfect portfolio and test your strategies with real NSE market conditions.
           </p>
           
           <motion.div 
@@ -151,7 +151,7 @@ const Home = () => {
             { 
               icon: DollarSign, 
               title: "Risk-Free Trading", 
-              desc: "Practice with $100,000 virtual cash and build your confidence with zero risk." 
+              desc: "Practice with ₹10,00,000 in virtual cash and build your confidence with zero financial risk." 
             },
             { 
               icon: LineChart, 
@@ -279,7 +279,7 @@ const Home = () => {
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
               <h2 className="text-3xl font-bold mb-4">Ready to Become a Trading Pro?</h2>
-              <p className="mb-6 text-blue-100">Join thousands of traders who are mastering the market with our risk-free platform. Start with $100,000 in virtual cash today.</p>
+              <p className="mb-6 text-blue-100">Join thousands of traders who are mastering the NSE market with our risk-free platform. Start with ₹10,00,000 in virtual cash today.</p>
               <button 
                 onClick={() => navigate('/signup')}
                 className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition"
