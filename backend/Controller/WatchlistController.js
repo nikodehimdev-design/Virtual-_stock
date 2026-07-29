@@ -1,6 +1,6 @@
 const Watchlist = require('../Models/WatchlistModel');
 
-module.exports.getWatchlist = async (req, res) => {
+module.exports.getWatchlist = async(req, res) => {
     try {
         const { WatchlistId } = req.params;
         const watchlist = await Watchlist.findOne({ WatchlistId });
@@ -10,14 +10,13 @@ module.exports.getWatchlist = async (req, res) => {
         }
 
         return res.status(200).json({ watchlist });
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         return res.status(500).json({ msg: err.message });
     }
 };
 
-module.exports.addToWatchlist = async (req, res) => {
+module.exports.addToWatchlist = async(req, res) => {
     try {
         const { WatchlistId, stockName } = req.body;
 
@@ -34,35 +33,34 @@ module.exports.addToWatchlist = async (req, res) => {
                 Names: [stockName]
             });
             await watchlist.save();
-            return res.status(201).json({ 
-                msg: 'Watchlist created and stock added', 
-                watchlist 
+            return res.status(201).json({
+                msg: 'Watchlist created and stock added',
+                watchlist
             });
         }
 
         // Check if stock already exists in watchlist
         if (watchlist.Names.includes(stockName)) {
-            return res.status(400).json({ msg: 'Stock already in watchlist' });
+            return res.status(400).json({ msg: 'Stock already in watchlist only one stock  is allowed to and in the watchlist' });
         }
 
         // Add stock to existing watchlist
         watchlist.Names.push(stockName);
         await watchlist.save();
 
-        return res.status(200).json({ 
-            msg: 'Stock added to watchlist', 
-            watchlist 
+        return res.status(200).json({
+            msg: 'Stock added to watchlist',
+            watchlist
         });
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         return res.status(500).json({ msg: err.message });
     }
 };
 
-module.exports.removeFromWatchlist = async (req, res) => {
+module.exports.removeFromWatchlist = async(req, res) => {
     try {
-        const { id,stockName } = req.body;
+        const { id, stockName } = req.body;
 
         if (!stockName) {
             return res.status(400).json({ msg: 'stockName is required' });
@@ -83,12 +81,11 @@ module.exports.removeFromWatchlist = async (req, res) => {
         watchlist.Names = watchlist.Names.filter(name => name !== stockName);
         await watchlist.save();
 
-        return res.status(200).json({ 
-            msg: 'Stock removed from watchlist', 
-            watchlist 
+        return res.status(200).json({
+            msg: 'Stock removed from watchlist',
+            watchlist
         });
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         return res.status(500).json({ msg: err.message });
     }

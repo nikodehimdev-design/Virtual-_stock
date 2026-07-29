@@ -1,0 +1,203 @@
+Project Architecture Overview
+The project follows a three-tier microservices architecture, with three separate services running in Docker containers communicating with each other:
+
+
+
+Frontend (React/Vite)   <-->   Node.js Backend   <-->   MongoDB Database
+        |
+        v
+FastAPI Python Backend  <-->   IndianAPI.in (External Stock Data Source)
+1. FRONTEND
+Technology: React 18 + TypeScript + Vite
+
+Framework: React 18.3 with TypeScript (strict typing)
+Build Tool: Vite 5.4 (lightning-fast dev server and bundler)
+Routing: React Router DOM v6 (client-side SPA routing)
+Styling: TailwindCSS v3.4 with PostCSS and Autoprefixer
+State Management: Zustand v4.5 (lightweight global state store)
+UI Component Libraries:
+Chakra UI v3.15 (accessible component library)
+MUI Material v7 (Google Material Design components)
+Lucide React (icon library)
+Framer Motion v12 (animations and transitions)
+AOS (Animate On Scroll library)
+Data Fetching: Axios v1.6 for REST API calls + React Query v3 for caching/server state
+Charts & Graphs: Recharts v2.12 (stock price charts)
+Authentication: JWT Decode + Clerk React v5 (auth integration)
+Notifications: React Toastify + React Hot Toast
+PDF Generation: jsPDF + pdfmake (for portfolio report download)
+AI Integration: @google/generative-ai v0.24 (Gemini AI integration)
+Linting: ESLint 9 with TypeScript ESLint plugin
+Frontend Pages (11 pages):
+
+Home.tsx — Landing page
+Login.tsx — User login
+SignUp.tsx — User registration
+Dashboard.tsx — User trading dashboard
+StockList.tsx — Browse all stocks
+StockDetail.tsx — Individual stock detail with chart
+Holding.tsx — Portfolio/holdings overview
+Watchlist.tsx — User's saved watchlist
+Orders.tsx — Order history
+Learn.tsx — Educational stock learning page
+AboutContact.tsx — About and contact page
+Docker Port: 3000 (maps to internal 5173)
+
+2. NODE.JS BACKEND (Express)
+Technology: Node.js + Express.js
+
+Runtime: Node.js
+Framework: Express.js v4.21
+Authentication: bcryptjs v3 (password hashing) + jsonwebtoken v9 (JWT tokens)
+Database ORM: Mongoose v8.12 (MongoDB ODM)
+Utilities: nanoid v5 (unique ID generation), dotenv v16 (env config), cors v2.8
+Dev Tool: Nodemon v3.1 (auto-restart on file changes)
+Purpose: Handles all user-facing operations — user registration, login, watchlist management, and holdings CRUD.
+
+API Routes:
+
+/ — UserRoutes: Register, login, profile
+/stocks — WatchlistRoutes: Add/remove/view watchlist stocks
+/holding — HoldingRoutes: View and manage portfolio holdings
+MongoDB Models (Mongoose Schemas):
+
+User: Name, Email, Password (hashed), Balance (default 10,000 virtual money), ExchangeId, WatchlistId, HoldingId, MobileNo, Username
+Holding: HoldingId, Holdings array [ Name, Symbol, Quantity, Price, Date ]
+Watchlist: WatchlistId, array of stock symbols
+Docker Port: 5000
+
+3. FASTAPI PYTHON BACKEND (Stock Data Engine)
+Technology: Python + FastAPI + Uvicorn
+
+Framework: FastAPI (modern async Python web framework)
+Server: Uvicorn with standard extras (ASGI server)
+Data Processing: Pandas (portfolio data manipulation)
+Database: PyMongo (MongoDB direct driver)
+Caching: cachetools TTLCache (5-second TTL price cache to avoid hammering the API)
+Real-time: WebSockets (native FastAPI WebSocket support)
+News Fetching: feedparser (parses RSS feeds from Economic Times and Google News)
+HTTP Client: requests + requests.Session (with persistent session headers)
+Config: python-dotenv, pydantic (request validation)
+Legacy libs: nsepython, jugaad-data, flask, flask-cors, flask-sock (partially retained from earlier version)
+MongoDB Collections used by FastAPI:
+
+orders — Trade order records (indexed on status, symbol, created_at)
+users — User accounts (read for balance checks)
+holdings — Portfolio holdings (read/write during buy/sell)
+FastAPI REST API Endpoints:
+
+POST /api/stock-quotes — Batch fetch up to 50 stock quotes at once
+GET /api/search/{query} — Search stocks by name/symbol
+GET /api/validate/{symbol} — Validate if a stock symbol exists
+GET /api/graph-data/{symbol}?period=1yr — Historical price chart data (1m, 6m, 1yr, 3yr, 5yr, max)
+POST /api/place-order — Place a BUY or SELL order
+GET /report_generation/{holding_id} — Generate a full text portfolio report
+WebSocket /ws — Real-time price streaming
+Docker Port: 8000
+
+HOW STOCK DATA IS FETCHED — Detailed Explanation
+This is the most important part of the architecture. Stock data is fetched using the IndianAPI.in service.
+
+Step 1 — IndianAPIClient class (custom HTTP client)
+
+A custom Python class called IndianAPIClient is defined in app.py. It wraps the requests.Session object with a persistent header x-api-key: YOUR_API_KEY. Every request goes to the base URL https://stock.indianapi.in. The API key is loaded from the .env file as INDIAN_API_KEY.
+
+The client has the following methods:
+
+stock_by_name(name) — Hits GET /stock?name=SYMBOL to get real-time quote data
+historical_data(stock_name, period, filter_type) — Hits GET /historical_data?stock_name=SYMBOL&period=5yr&filter=price for chart data
+trending() — Hits GET /trending for trending stocks
+map_to_nse_format(data) — Transforms the raw IndianAPI.in response into a standardized NSE-like format (priceInfo, securityInfo, metadata)
+Step 2 — Data Transformation
+
+The raw IndianAPI.in response fields like currentPrice.NSE, currentPrice.BSE, percentChange, stockTechnicalData, yearHigh, yearLow, keyMetrics.VWAP are extracted and mapped to a normalized format. This normalized format is what the frontend and WebSocket consumers receive.
+
+Step 3 — Real-time WebSocket Streaming
+
+When a frontend client connects to ws://localhost:8000/ws and sends a subscribe message with a stock symbol, the server:
+
+Validates the symbol against IndianAPI.in
+Registers the client in a symbol_subscribers dictionary
+A background price_broadcast_loop coroutine runs every 3 seconds
+It calls fetch_price(symbol) which checks a TTLCache first (5-second cache) before hitting the API
+Fresh price data is broadcast as JSON to all subscribed WebSocket clients
+Step 4 — Batch Quotes
+
+The POST /api/stock-quotes endpoint accepts a JSON body {"symbols": ["IRFC", "SBIN", ...]} with up to 50 symbols. For each symbol, it calls asyncio.to_thread(indian_client.stock_by_name, symbol) — this runs the synchronous HTTP call in a thread pool so it doesn't block the async event loop. Results are collected and returned in a single response.
+
+Step 5 — Historical Data for Charts
+
+The GET /api/graph-data/{symbol} endpoint fetches historical price data. Period labels from the frontend (like "1y", "3y", "5y") are mapped to IndianAPI.in period strings ("1yr", "3yr", "5yr"). The response datasets array is parsed, the "Price" metric dataset is extracted, and date-price pairs are converted to [timestamp_ms, price] format for Recharts.
+
+Step 6 — News Fetching
+
+News is fetched from three sources in priority order:
+
+NewsAPI (optional, requires separate API key)
+Economic Times India RSS feed (https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms) — parsed with feedparser, filtered by ticker name
+Google News RSS (https://news.google.com/rss/search?q=TICKER+NSE+India+stock) — parsed with feedparser
+Step 7 — Portfolio Report Generation
+
+The GET /report_generation/{holding_id} endpoint:
+
+Fetches user's holdings from MongoDB using HoldingId
+Converts to a pandas DataFrame
+Instantiates NSEPortfolioAgent which coordinates three sub-agents: NSEStockAgent (prices), NSEWebAgent (company info), NSENewsAgent (news)
+Generates a formatted text report with portfolio value, P&L, company descriptions, and latest news headlines
+Step 8 — Order Execution
+
+The POST /api/place-order endpoint handles BUY/SELL:
+
+For BUY: Checks user balance, deducts cost, updates/creates holding entry (with average price calculation for existing holdings), inserts order record
+For SELL: Checks sufficient quantity in holdings, increases balance, reduces holding quantity, inserts order record
+All operations go directly to MongoDB via PyMongo
+DATABASE
+Technology: MongoDB (NoSQL)
+
+Hosted connection via MONGO_URI in environment variables (likely MongoDB Atlas or local)
+Database name: growup_database
+Collections:
+users — User accounts (managed by Node.js backend)
+holdings — Stock holdings per user (managed by both backends)
+orders — Trade history (managed by FastAPI)
+exchanges — Exchange data (defined but usage not confirmed)
+Both the Node.js backend and FastAPI backend connect independently to the same MongoDB instance
+CONTAINERIZATION
+Technology: Docker + Docker Compose
+
+Three services are defined in docker-compose.yml:
+
+Service	Build Context	Host Port	Container Port
+backend (Node.js)	./backend	5000	5000
+frontend (React)	./frontend	3000	5173
+fastapi_backend	./fastapi_backend	8000	8000
+All services have restart: always and use volume mounts for live code reload during development.
+
+EXTERNAL SERVICES & APIs
+IndianAPI.in — Primary stock data provider. Requires API key (INDIAN_API_KEY). Provides real-time quotes, historical data, company profiles, trending stocks.
+Economic Times RSS — Free news feed for Indian market news
+Google News RSS — Free news feed filtered by stock ticker + NSE India keywords
+NewsAPI (optional) — If configured with a separate key, provides additional English news articles
+MongoDB Atlas (likely) — Cloud database hosting via MONGO_URI
+SUMMARY OF TECH STACK TABLE
+Layer	Technology
+Frontend Framework	React 18 + TypeScript
+Frontend Build Tool	Vite 5
+Frontend Styling	TailwindCSS 3
+Frontend State	Zustand
+Frontend Charts	Recharts
+Frontend Animation	Framer Motion
+Frontend UI Libs	Chakra UI, MUI Material
+Frontend HTTP	Axios
+Frontend Auth	JWT, Clerk
+Backend (User/Auth)	Node.js + Express.js
+Backend (Stock Data)	Python + FastAPI + Uvicorn
+Database	MongoDB + Mongoose (Node) + PyMongo (Python)
+Real-time	WebSockets (FastAPI native)
+Stock Data API	IndianAPI.in
+News Data	feedparser + Economic Times RSS + Google News RSS
+Data Processing	Pandas
+Caching	cachetools TTLCache
+Containerization	Docker + Docker Compose
+PDF Export	jsPDF + pdfmake
+AI (optional)	Google Generative AI (Gemini)

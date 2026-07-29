@@ -4,98 +4,124 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const generateRandomId = (length = 10) => {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
 };
 
 const generateUsername = (name, email, mobileNo) => {
-  const firstName = name.split(' ')[0].toLowerCase();
-  const emailPart = email.split('@')[0].substring(0, 3).toLowerCase();
-  const lastDigits = mobileNo.toString().slice(-4);
-  const randomSuffix = generateRandomId(3);
-  return `${firstName}${emailPart}${lastDigits}${randomSuffix}`;
+    const firstName = name.split(' ')[0].toLowerCase();
+    const emailPart = email.split('@')[0].substring(0, 3).toLowerCase();
+    const lastDigits = mobileNo.toString().slice(-4);
+    const randomSuffix = generateRandomId(3);
+    return `${firstName}${emailPart}${lastDigits}${randomSuffix}`;
 };
 
-module.exports.registerUser = async (req, res) => {
-  try {
-    const { Name, Email, Password, MobileNo } = req.body;
-    
-    if (!Name || !Email || !Password || !MobileNo) {
-      return res.status(400).json({ msg: "Please enter all fields" });
+module.exports.registerUser = async(req, res) => {
+    try {
+        const { Name, Email, Password, MobileNo } = req.body;
+
+        if (!Name || !Email || !Password || !MobileNo) {
+            if (!MobileNo) {
+                return res.status(400).json({ msg: "Please enter a valid mobile number" });
+            } else if (!Name) {
+                return res.status(400).json({ msg: "Please enter a valid name" });
+            } else if (!Email) {
+                return res.status(400).json({ msg: "Please enter a valid email" });
+            } else if (!Password) {
+                return res.status(400).json({ msg: "Please enter a valid password" });
+            } else {
+                return res.status(400).json({ msg: "Please enter all fields" });
+            }
+        }
+
+        if (Name.length < 4) {
+            return res.status(400).json({ msg: "Name should be at least have 4 characters" });
+
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(Email)) {
+            return res.status(400).json({
+                msg: "Please enter a valid email"
+            });
+        }
+
+        if (Password.length < 7) {
+            return res.status(400).json({ msg: " password must contain at least 7 characters " });
+        }
+
+
+        const user = await UserModel.findOne({ Email });
+        if (user) {
+            return res.status(400).json({ msg: "User already exists" });
+        }
+
+        const watchlistId = generateRandomId();
+        const exchangeId = generateRandomId();
+        const holdingId = generateRandomId();
+
+        const bcryptPassword = await bcrypt.hash(Password, 10);
+
+        const username = generateUsername(Name, Email, MobileNo);
+
+        const newUser = new UserModel({
+            Name,
+            Email,
+            Password: bcryptPassword,
+            MobileNo,
+            WatchlistId: watchlistId,
+            ExchangeId: exchangeId,
+            Balance: 10000,
+            HoldingId: holdingId,
+            Date: Date.now(),
+            Username: username
+        });
+
+        await newUser.save();
+
+        // Generate JWT token
+        const token = jwt.sign({ id: newUser._id },
+            process.env.TOKEN_KEY || 'default_secret_key'
+        );
+
+        return res.status(200).json({
+            msg: "User registered successfully",
+            user: newUser,
+            token: token
+        });
+
+    } catch (err) {
+        console.error("Registration error:", err);
+        return res.status(500).json({ msg: "Server error during registration" });
     }
-    
-    const user = await UserModel.findOne({ Email });
-    if (user) {
-      return res.status(400).json({ msg: "User already exists" });
-    }
-    
-    const watchlistId = generateRandomId();
-    const exchangeId = generateRandomId();
-    const holdingId = generateRandomId();
-    
-    const bcryptPassword = await bcrypt.hash(Password, 10);
-    
-    const username = generateUsername(Name, Email, MobileNo);
-    
-    const newUser = new UserModel({
-      Name,
-      Email,
-      Password: bcryptPassword,
-      MobileNo,
-      WatchlistId: watchlistId,
-      ExchangeId: exchangeId,
-      Balance: 10000,
-      HoldingId: holdingId,
-      Date: Date.now(),
-      Username: username
-    });
-    
-    await newUser.save();
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: newUser._id },
-      process.env.TOKEN_KEY || 'default_secret_key'
-    );
-    
-    return res.status(200).json({ 
-      msg: "User registered successfully",
-      user: newUser,
-      token: token
-    });
-    
-  } catch (err) {
-    console.error("Registration error:", err);
-    return res.status(500).json({ msg: "Server error during registration" });
-  }
 };
 
-module.exports.loginUser = async (req, res) => {
-    try{
+module.exports.loginUser = async(req, res) => {
+    try {
         const { Email, Password } = req.body;
 
-        if(!Email || !Password){
+        if (!Email || !Password) {
             return res.status(400).json({ msg: "Please enter all fields" });
         }
 
         const user = await UserModel.findOne({ Email });
 
-        if(!user){
-            return res.status(400).json({ msg: "User does not exist" });
+        if (!user) {
+            return res.status(400).json({ msg: "This mail is not registered on our platform  please register first " });
         }
 
         const isMatch = await bcrypt.compare(Password, user.Password);
 
-        if(!isMatch){
+        if (!isMatch) {
             return res.status(400).json({ msg: "Invalid credentials" });
         }
 
-        const token = jwt.sign(
-            { id: user._id }, 
+        const token = jwt.sign({ id: user._id },
             process.env.TOKEN_KEY || 'default_secret_key',
         );
 
@@ -105,8 +131,7 @@ module.exports.loginUser = async (req, res) => {
             user: user,
             token: token
         });
-    }
-    catch(err){
+    } catch (err) {
         console.error("Login error:", err);
         return res.status(500).json({ msg: "Server error during login" });
     }
