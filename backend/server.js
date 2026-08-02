@@ -6,6 +6,7 @@ require('dotenv').config();
 const cors = require('cors');
 const db = require('./dbconfig/dbconfig');
 const HoldingRoutes = require('./Routes/HoldingRoutes');
+const aiRoutes = require('./Routes/aiRoutes');
 const path = require('path')
 app.use(express.json())
 app.use(cors({
@@ -16,6 +17,7 @@ app.use(cors({
 app.use('/', UserRoutes)
 app.use('/stocks', WatchlistRoutes);
 app.use('/holding', HoldingRoutes);
+app.use('/model', aiRoutes);
 const port = process.env.PORT;
 console.log("port is", port);
 app.get('/', (req, res) => {
