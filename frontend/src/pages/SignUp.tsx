@@ -110,7 +110,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   name="Name"
                   value={formData.Name}
                   onChange={handleChange}
-                  placeholder="John Doe"
+                  placeholder="Firstname Lastname"
                   className="pl-10 w-full border border-gray-300 rounded px-3 py-2"
                   required
                 />

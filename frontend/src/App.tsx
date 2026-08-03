@@ -17,6 +17,7 @@ import PrivateRoute from './components/PrivateRoute';
 import LearnPage from './pages/Learn';
 import StockDashboard from './pages/Holding';
 import Orders from './pages/Orders';
+import ProfilePage from './pages/profile';
 
 function App() {
   const setUser = useAuthStore((state) => state.setUser);
@@ -54,6 +55,7 @@ function App() {
             <Route path="/stocks" element={<PrivateRoute><StockList /></PrivateRoute> } />
             <Route path="/watchlist" element={<PrivateRoute><Watchlist /></PrivateRoute> } />
             <Route path="/orders" element={<Orders /> } />
+            <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
           </Routes>
         </main>
         <Footer/>

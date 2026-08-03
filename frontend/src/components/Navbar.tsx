@@ -62,7 +62,7 @@ const Navbar = () => {
                   <Info className="h-4 w-4 mr-1" />
                   About
                 </Link>
-                <Link to="/" className="text-gray-600 hover:text-gray-900">
+                <Link to="/profile" className="text-gray-600 hover:text-gray-900">
                   <User className="h-5 w-5" />
                 </Link>
                 <button
