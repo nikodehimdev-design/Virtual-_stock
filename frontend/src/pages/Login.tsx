@@ -1,6 +1,6 @@
 import type React from "react"
 import { useState } from "react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
 import { Eye, EyeOff, Mail, Lock, Github, Twitter, Facebook } from "lucide-react"
 import { motion } from "framer-motion"
 import { useAuthStore } from "../store/authStore"
@@ -119,7 +119,7 @@ export default function LoginPage() {
                     <label htmlFor="password" className="text-sm font-medium">
                       Password
                     </label>
-                    <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                    <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
                       Forgot password?
                     </Link>
                   </div>
@@ -187,7 +187,7 @@ export default function LoginPage() {
         <div className="text-center mt-6">
           <p className="text-sm text-gray-500">
             Don't have an account?{" "}
-            <Link href="/signup" className="text-blue-600 font-medium hover:underline">
+            <Link to="/signup" className="text-blue-600 font-medium hover:underline">
               Sign up
             </Link>
           </p>

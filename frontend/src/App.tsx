@@ -52,7 +52,6 @@ function App() {
                 // </PrivateRoute>
               }
             />
-            <Route path="/stocks" element={<PrivateRoute><StockList /></PrivateRoute> } />
             <Route path="/watchlist" element={<PrivateRoute><Watchlist /></PrivateRoute> } />
             <Route path="/orders" element={<Orders /> } />
             <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />

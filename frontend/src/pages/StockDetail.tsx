@@ -91,8 +91,40 @@ const StockDetails = () => {
         if (!response.data) {
           throw new Error("No data received from API");
         }
-        setStockData(response.data);
+        // Backend returns { priceInfo, securityInfo, metadata } — flatten to our StockData shape
+        const raw = response.data;
+        const priceInfo = raw?.priceInfo || raw;
+        const securityInfo = raw?.securityInfo || {};
+        const metadata = raw?.metadata || {};
+        const flatData: StockData = {
+          lastPrice: priceInfo.lastPrice || 0,
+          previousClose: priceInfo.previousClose || 0,
+          change: priceInfo.change || 0,
+          pChange: priceInfo.pChange || 0,
+          open: priceInfo.open || 0,
+          intraDayHighLow: priceInfo.intraDayHighLow || { max: 0, min: 0 },
+          weekHighLow: priceInfo.weekHighLow || { max: 0, min: 0, maxDate: '', minDate: '' },
+          vwap: priceInfo.vwap || 0,
+          close: priceInfo.close || 0,
+          lowerCP: String(priceInfo.lowerCP || '0'),
+          upperCP: String(priceInfo.upperCP || '0'),
+          pPriceBand: priceInfo.pPriceBand || 'N/A',
+          basePrice: priceInfo.basePrice || 0,
+          ieq: priceInfo.ieq || '',
+          iNavValue: metadata.iNavValue || 0,
+          tickSize: securityInfo.tickSize || 0,
+          stockIndClosePrice: metadata.stockIndClosePrice || 0,
+          checkINAV: metadata.checkINAV || false,
+          marketStatus: priceInfo.marketStatus || '',
+          advances: metadata.advances || 0,
+          declines: metadata.declines || 0,
+          unchanged: metadata.unchanged || 0,
+          indexSymbol: securityInfo.index || '',
+          symbol: securityInfo.symbol || symbol,
+        };
+        setStockData(flatData);
         setLoading(false);
+
 
         // Connect to WebSocket
         ws.current = new WebSocket(`${import.meta.env.VITE_FLASK_BACKEND_URL.replace('http', 'ws')}/ws`);
@@ -126,13 +158,27 @@ const StockDetails = () => {
           setGraphData(data || []);
         } catch (graphErr) {
           console.error("Error fetching graph data:", graphErr);
-          setError(`Graph data error: ${graphErr.message}`);
+          // Don't set error for graph failures — stock data already loaded
         }
       } catch (err) {
         console.error("Error initializing:", err);
-        setError(`Initialization error: ${err.message}`);
+        let userMessage = 'Failed to load stock data.';
+        if (axios.isAxiosError(err)) {
+          const status = err.response?.status;
+          if (status === 502 || status === 503) {
+            userMessage = 'Stock data provider is temporarily unavailable. Please try again in a moment.';
+          } else if (status === 404) {
+            userMessage = `Stock "${symbol}" not found. Please check the symbol and try again.`;
+          } else if (err.code === 'ERR_NETWORK' || err.code === 'ECONNREFUSED') {
+            userMessage = 'Cannot connect to the server. Please make sure the backend is running.';
+          } else {
+            userMessage = err.response?.data?.detail || err.message || userMessage;
+          }
+        }
+        setError(userMessage);
         setLoading(false);
       }
+
     };
 
     fetchInitialData();
@@ -211,17 +257,24 @@ const StockDetails = () => {
       if (!user) {
         throw new Error('User not authenticated');
       }
+
+      const targetPrice = orderType === 'LIMIT' ? parseFloat(limitPrice) : (stockData?.lastPrice || 0);
+      if (targetPrice <= 0) {
+        setOrderStatus({ success: false, message: 'Stock price is unavailable. Please try again later.' });
+        return;
+      }
   
       // Prepare order data according to backend expectations
       const orderData = {
         symbol: symbol.toUpperCase(),
         quantity: parseInt(quantity),
         order_type: order_t,
-        target_price:parseFloat(stockData?.lastPrice),
+        target_price: targetPrice,
         Email: user.Email,
         OrderId: user.ExchangeId,
         HoldingId: user.HoldingId
       };
+
 
       // Use environment variable for the backend URL
       const backendUrl = import.meta.env.VITE_FLASK_BACKEND_URL || 'http://localhost:8000';
@@ -284,7 +337,7 @@ const StockDetails = () => {
       return;
     }
   
-    if (orderType === 'LIMIT' && (!limitPrice || isNaN(limitPrice))) {
+    if (orderType === 'LIMIT' && (!limitPrice || isNaN(Number(limitPrice)))) {
       setOrderStatus({ success: false, message: 'Please enter a valid limit price' });
       return;
     }
@@ -293,80 +346,69 @@ const StockDetails = () => {
       setIsSelling(true);
       setOrderStatus(null);
   
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (!user) throw new Error('User not authenticated');
-  
-      // 1. First fetch current holdings
-      const holdingsResponse = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/holding/getholding/${user.HoldingId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-  
-      // 2. Check if the response contains holdings
-      if (!holdingsResponse.data.holdings) {
-        throw new Error('No holdings data received');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user?.Email) throw new Error('User not authenticated');
+
+      const targetPrice = orderType === 'LIMIT' ? parseFloat(limitPrice) : (stockData?.lastPrice || 0);
+      if (targetPrice <= 0) {
+        setOrderStatus({ success: false, message: 'Stock price is unavailable. Please try again later.' });
+        return;
       }
   
-      // 3. Find the specific stock in holdings
-      const stockHolding = holdingsResponse.data.holdings.find(
-        h => h.Symbol === symbol
-      );
-  
-      // 4. Verify ownership and quantity
-      if (!stockHolding) {
-        throw new Error(`You don't own ${symbol}`);
-      }
-  
-      if (stockHolding.Quantity < quantity) {
-        throw new Error(`Only ${stockHolding.Quantity} shares available to sell`);
-      }
-  
-      // 5. Proceed with sell order
+      // Use same /api/place-order endpoint as buy — FastAPI handles both BUY and SELL
       const orderData = {
-        UserId: user._id,
-        Type: 'SELL',
-        Price: orderType === 'LIMIT' ? parseFloat(limitPrice) : stockData.lastPrice,
-        Qty: parseInt(quantity),
-        Name: stockData.name || symbol,
-        Symbol: symbol,
-        Time: new Date().toISOString(),
-        ExchangeId: `EXCH-${user._id}-${Date.now()}`,
+        symbol: symbol.toUpperCase(),
+        quantity: parseInt(quantity),
+        order_type: 'SELL',
+        target_price: targetPrice,
+        Email: user.Email,
+        OrderId: user.ExchangeId,
         HoldingId: user.HoldingId
       };
   
+      const backendUrl = import.meta.env.VITE_FLASK_BACKEND_URL || 'http://localhost:8000';
       const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/exchange/sell`,
+        `${backendUrl}/api/place-order`,
         orderData,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000
         }
       );
   
       setOrderStatus({ 
         success: true, 
-        message: 'Sold successfully!',
+        message: 'SELL order placed successfully!',
         details: response.data
       });
-  
-      // Refresh holdings after successful sale
-      fetchUserHoldings();
+
+      // Update local user balance if SELL succeeded
+      if (response.data.order) {
+        const updatedUser = { ...user };
+        const credit = response.data.order.quantity * response.data.order.target_price;
+        updatedUser.Balance = (updatedUser.Balance || 0) + credit;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Sell error:', err);
-      setOrderStatus({
-        success: false,
-        message: err.response?.data?.message || err.message || 'Sell failed'
-      });
+      let errorMessage = 'Failed to place sell order';
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (err.response) {
+        errorMessage = err.response.data?.error || err.response.data?.detail || err.message;
+      } else {
+        errorMessage = err.message || errorMessage;
+      }
+      setOrderStatus({ success: false, message: errorMessage });
     } finally {
       setIsSelling(false);
     }
   };
+
 
   // Define fetchUserHoldings function
   const fetchUserHoldings = async () => {

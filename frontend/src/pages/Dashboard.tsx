@@ -89,7 +89,9 @@ const Dashboard = () => {
                 }
               );
               const quoteData = quoteResponse.data;
-              const currentPrice = quoteData.intraDayHighLow?.value || quoteData.lastPrice || holding.Price;
+              // Backend returns { priceInfo, securityInfo, metadata }
+              const priceInfo = quoteData?.priceInfo || quoteData;
+              const currentPrice = priceInfo.intraDayHighLow?.value || priceInfo.lastPrice || holding.Price;
               
               return {
                 symbol: holding.Symbol,
@@ -97,8 +99,8 @@ const Dashboard = () => {
                 avgPrice: holding.Price || 0,
                 currentPrice: currentPrice,
                 totalValue: currentPrice * (holding.Quantity || 0),
-                change: quoteData.change || 0,
-                changePercent: quoteData.changePercent || 0
+                change: priceInfo.change || 0,
+                changePercent: priceInfo.pChange || priceInfo.changePercent || 0
               };
             } catch (error) {
               console.error(`Error fetching quote for ${holding.Symbol}:`, error);
@@ -146,13 +148,15 @@ const Dashboard = () => {
                 }
               );
               const quoteData = quoteResponse.data;
+              // Backend returns { priceInfo, securityInfo, metadata }
+              const priceInfo = quoteData?.priceInfo || quoteData;
               return {
                 symbol: symbol,
-                price: quoteData.intraDayHighLow?.value || quoteData.lastPrice || 0,
-                change: quoteData.change || 0,
-                changePercent: quoteData.changePercent || 0,
-                volume: quoteData.volume || 0,
-                marketCap: quoteData.marketCap || 0
+                price: priceInfo.intraDayHighLow?.value || priceInfo.lastPrice || 0,
+                change: priceInfo.change || 0,
+                changePercent: priceInfo.pChange || priceInfo.changePercent || 0,
+                volume: priceInfo.volume || 0,
+                marketCap: priceInfo.marketCap || 0
               };
             } catch (error) {
               console.error(`Error fetching quote for ${symbol}:`, error);

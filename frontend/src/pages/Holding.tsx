@@ -224,7 +224,9 @@ const StockDashboard = () => {
               if (!quoteResponse.ok) throw new Error(`Failed to fetch quote for ${symbol}`);
 
               const quoteData = await quoteResponse.json();
-              const currentPrice = quoteData.intraDayHighLow?.value || quoteData.lastPrice || basePrice;
+              // Backend returns { priceInfo, securityInfo, metadata }
+              const priceInfo = quoteData?.priceInfo || quoteData;
+              const currentPrice = priceInfo.intraDayHighLow?.value || priceInfo.lastPrice || basePrice;
 
               return {
                 id: HoldingId,
@@ -233,8 +235,8 @@ const StockDashboard = () => {
                 quantity,
                 basePrice,
                 currentPrice,
-                change: quoteData.change || 0,
-                changePercent: quoteData.pChange || quoteData.changePercent || 0,
+                change: priceInfo.change || 0,
+                changePercent: priceInfo.pChange || priceInfo.changePercent || 0,
               };
             } catch (err) {
               console.error(`Error fetching quote for ${symbol}:`, err);

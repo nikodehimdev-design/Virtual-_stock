@@ -50,13 +50,13 @@ class IndianAPIClient:
     def __init__(self, api_key: str, base_url: str = "https://stock.indianapi.in"):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
+        self.timeout = 15  # seconds
         self.session = requests.Session()
         self.session.headers.update({"x-api-key": api_key})
-        self.session.timeout = 10
 
     def _get(self, path: str, params: dict = None) -> Any:
         url = f"{self.base_url}{path}"
-        resp = self.session.get(url, params=params)
+        resp = self.session.get(url, params=params, timeout=self.timeout)
         resp.raise_for_status()
         return resp.json()
 
@@ -233,6 +233,8 @@ async def api_stock_quotes_batch(request: Request):
 
         return {"results": results, "count": len(results)}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Batch quote error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1267,12 +1269,16 @@ async def api_stock_quote(symbol: str):
         # Stock not found or bad response format
         logger.warning(f"Stock lookup failed for {symbol}: {e}")
         raise HTTPException(status_code=404, detail=str(e))
+    except requests.Timeout:
+        logger.warning(f"Timeout fetching {symbol} from IndianAPI.in")
+        raise HTTPException(status_code=503, detail="Stock data provider timed out. Please try again.")
     except requests.HTTPError as e:
         logger.warning(f"API error for {symbol}: {e}")
-        raise HTTPException(status_code=502, detail=f"Upstream API error: {e}")
+        raise HTTPException(status_code=502, detail=f"Stock data provider error: {e.response.status_code if e.response else 'unknown'}")
     except Exception as e:
         logger.error(f"Unexpected error fetching {symbol}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
 @app.get("/api/debug/users")
 async def debug_users():
     """Temporary endpoint to diagnose MongoDB connectivity"""

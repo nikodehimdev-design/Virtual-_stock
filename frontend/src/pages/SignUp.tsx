@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import Link from "next/link"
+import { Link } from "react-router-dom"
 import { Eye, EyeOff, User, Mail, Lock, Github, Twitter, Facebook, Check, X, PhoneCallIcon } from "lucide-react"
 import { motion } from "framer-motion"
 import { useAuthStore } from "../store/authStore"
@@ -221,11 +221,11 @@ const handleSubmit = async (e: React.FormEvent) => {
               />
               <label htmlFor="terms" className="text-sm leading-tight">
                 I agree to the{" "}
-                <Link href="/terms" className="text-blue-600 hover:underline">
+                <Link to="/terms" className="text-blue-600 hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-blue-600 hover:underline">
+                <Link to="/privacy" className="text-blue-600 hover:underline">
                   Privacy Policy
                 </Link>
               </label>
@@ -265,7 +265,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div className="text-center mt-6">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 font-medium hover:underline">
+            <Link to="/login" className="text-blue-600 font-medium hover:underline">
               Sign in
             </Link>
           </p>
